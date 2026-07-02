@@ -1,26 +1,229 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* -------------------------------------------------------------
+ * Theme Definitions & CSS Variables
+ * ------------------------------------------------------------- */
+
+/* Default: Sonic Deep */
+:root, [data-theme="sonic-deep"] {
+  --bg-color: #121414;
+  --panel-bg: rgba(24, 26, 26, 0.7);
+  --panel-bg-hover: rgba(40, 42, 42, 0.85);
+  --accent-color: #1db954;
+  --accent-hover: #1ed760;
+  --accent-glow: rgba(29, 185, 84, 0.4);
+  --text-primary: #ffffff;
+  --text-secondary: #a7a7a7;
+  --text-muted: #6a6a6a;
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glow-intensity: 8px;
+  --font-main: var(--font-montserrat), sans-serif;
+  --cyber-scan: none;
+  --cyber-grid-display: none;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+[data-theme="electric-pulse"] {
+  --bg-color: #0b0716;
+  --panel-bg: rgba(24, 15, 41, 0.65);
+  --panel-bg-hover: rgba(45, 28, 77, 0.8);
+  --accent-color: #d946ef;
+  --accent-hover: #e879f9;
+  --accent-glow: rgba(217, 70, 239, 0.5);
+  --text-primary: #ffffff;
+  --text-secondary: #c084fc;
+  --text-muted: #8b5cf6;
+  --glass-border: rgba(217, 70, 239, 0.15);
+  --glow-intensity: 12px;
+  --font-main: var(--font-montserrat), sans-serif;
+  --cyber-scan: none;
+  --cyber-grid-display: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+[data-theme="pure-minimalist"] {
+  --bg-color: #080808;
+  --panel-bg: rgba(18, 18, 18, 0.9);
+  --panel-bg-hover: rgba(30, 30, 30, 0.95);
+  --accent-color: #ffffff;
+  --accent-hover: #e5e7eb;
+  --accent-glow: rgba(255, 255, 255, 0.15);
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --text-muted: #444444;
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glow-intensity: 0px;
+  --font-main: var(--font-montserrat), sans-serif;
+  --cyber-scan: none;
+  --cyber-grid-display: none;
+}
+
+[data-theme="retro-futurist"] {
+  --bg-color: #04080e;
+  --panel-bg: rgba(8, 16, 28, 0.8);
+  --panel-bg-hover: rgba(16, 32, 56, 0.9);
+  --accent-color: #00f0ff;
+  --accent-hover: #39ff14;
+  --accent-glow: rgba(0, 240, 255, 0.5);
+  --text-primary: #00f0ff;
+  --text-secondary: #00ffaa;
+  --text-muted: #0d4b61;
+  --glass-border: rgba(0, 240, 255, 0.25);
+  --glow-intensity: 15px;
+  --font-main: var(--font-geist-mono), monospace;
+  --cyber-scan: block;
+  --cyber-grid-display: block;
+}
+
+/* Apply base theme settings */
+body {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  transition: background-color 0.4s ease, color 0.4s ease;
+  overflow-x: hidden;
+}
+
+/* -------------------------------------------------------------
+ * Custom Classes and Utilities
+ * ------------------------------------------------------------- */
+
+/* Glassmorphism shell */
+.glass-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid var(--glass-border);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.glass-panel-hover:hover {
+  background: var(--panel-bg-hover);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* Action button active click scaling */
+.active-scale {
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.active-scale:active {
+  transform: scale(0.95);
+}
+
+/* Dynamic Glow utilities */
+.text-glow {
+  text-shadow: 0 0 var(--glow-intensity) var(--accent-glow);
+}
+
+.border-glow:hover, .border-glow-active {
+  box-shadow: 0 0 var(--glow-intensity) var(--accent-glow);
+  border-color: var(--accent-color);
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
+
+/* Custom range input styling (timeline & volume sliders) */
+input[type="range"].custom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"].custom-slider:focus {
+  outline: none;
+}
+
+input[type="range"].custom-slider::-webkit-slider-runnable-track {
+  background: var(--text-muted);
+  height: 4px;
+  border-radius: 2px;
+}
+
+input[type="range"].custom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--accent-color);
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  margin-top: -4px;
+  transition: transform 0.1s;
+}
+
+input[type="range"].custom-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.3);
+  background: var(--accent-hover);
+  box-shadow: 0 0 8px var(--accent-color);
+}
+
+/* -------------------------------------------------------------
+ * Retro-Futurist Cyber Effects
+ * ------------------------------------------------------------- */
+.cyber-grid-overlay {
+  display: var(--cyber-grid-display);
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: 
+    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  z-index: -1;
+  opacity: 0.8;
+}
+
+.cyber-scanlines-overlay {
+  display: var(--cyber-scan);
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
+  z-index: 9999;
+  opacity: 0.15;
+}
+
+/* Animations */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.8;
+    text-shadow: 0 0 6px var(--accent-glow);
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 14px var(--accent-color);
+  }
+}
+.cyber-glow-pulse {
+  animation: pulse-glow 2s infinite ease-in-out;
 }
