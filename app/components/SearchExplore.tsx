@@ -5,6 +5,7 @@ import { Search as SearchIcon, History, X, Play, Pause, Calendar, ArrowRight, He
 import { TRACKS, Track } from '../data/musicData';
 
 interface SearchExploreProps {
+  tracks: Track[]
   currentTrack: Track | null;
   isPlaying: boolean;
   onPlayTrack: (track: Track, trackList?: Track[]) => void;
@@ -17,6 +18,7 @@ interface SearchExploreProps {
 }
 
 export default function SearchExplore({
+  tracks,
   currentTrack,
   isPlaying,
   onPlayTrack,
@@ -65,7 +67,7 @@ export default function SearchExplore({
 
   // Filter track database based on query or categories
   const getFilteredTracks = () => {
-    let list = TRACKS;
+    let list = tracks;
 
     if (filterType.type === 'genre') {
       list = list.filter(t => t.genre.toLowerCase() === filterType.value.toLowerCase());

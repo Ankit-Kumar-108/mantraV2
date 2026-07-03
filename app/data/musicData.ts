@@ -1,3 +1,38 @@
+// Add this to app/data/musicData.ts
+export async function fetchTracksFromApi(): Promise<Track[]> {
+  try {
+    const res = await fetch("/api/tracks");
+    if (!res.ok) {
+      throw new Error(`Failed to fetch: ${res.statusText}`);
+    }
+    
+    const data = await res.json();
+    if (!data.success) {
+      throw new Error(data.message || "Failed to fetch tracks");
+    }
+
+    // Convert API response schema (artist is an object) to match the Track interface
+    return data.tracks.map((t: any) => ({
+      id: t.id,
+      title: t.title,
+      artistId: t.artist.id,
+      artistName: t.artist.name,
+      album: t.album,
+      coverUrl: t.coverUrl,
+      audioUrl: t.audioUrl,
+      duration: t.duration,
+      durationSec: t.durationSec,
+      genre: t.genre,
+      mood: t.mood,
+      plays: t.plays,
+      dateAdded: t.dateAdded,
+    }));
+  } catch (error) {
+    console.error("Error fetching tracks from API:", error);
+    return [];
+  }
+}
+
 export interface Track {
   id: string;
   title: string;
@@ -157,7 +192,7 @@ export const TRACKS: Track[] = [
     mood: "Energetic",
     plays: 289000,
     dateAdded: "2026-06-28",
-  }
+  },
 ];
 
 export const ARTISTS: Artist[] = [

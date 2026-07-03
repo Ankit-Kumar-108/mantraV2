@@ -30,41 +30,11 @@ export default function Visualizer({ audioRef, isPlaying, theme }: VisualizerPro
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // Setup real analyzer if possible on user interaction
-    const setupRealAudio = () => {
-      if (!audioRef.current || audioContextRef.current) return;
-      try {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        const audioContext = new AudioContextClass();
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 64; // small fft for clean bar look
+    // Note: We intentionally skip createMediaElementSource() here.
+    // Cross-origin audio (R2 presigned URLs) gets silently muted by the browser
+    // when routed through the Web Audio API without proper CORS headers.
+    // The simulation-based visualizer below provides a great visual without affecting audio playback.
 
-        // Connect source
-        // Note: some browsers block cross-origin audio from Web Audio API. 
-        // We catch errors and let the simulator handle it if blocked.
-        const source = audioContext.createMediaElementSource(audioRef.current);
-        source.connect(analyser);
-        analyser.connect(audioContext.destination);
-
-        audioContextRef.current = audioContext;
-        analyserRef.current = analyser;
-        sourceRef.current = source;
-      } catch (err) {
-        console.warn("Web Audio API blocked or failed, using visualizer simulation.", err);
-      }
-    };
-
-    // Try setup on click anywhere or play
-    const handleInteraction = () => {
-      setupRealAudio();
-      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-        audioContextRef.current.resume();
-      }
-    };
-    window.addEventListener('click', handleInteraction);
-    if (isPlaying) {
-      handleInteraction();
-    }
 
     // Set up variables for simulation
     const barCount = 32;
@@ -161,7 +131,6 @@ export default function Visualizer({ audioRef, isPlaying, theme }: VisualizerPro
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
-      window.removeEventListener('click', handleInteraction);
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }

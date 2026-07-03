@@ -66,7 +66,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-y-auto bg-[#0a0c0c] select-none">
+    <div className="h-screen w-full flex items-center justify-center p-4 relative overflow-y-auto bg-[#0a0c0c] select-none">
       {/* Background radial highlight */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-[var(--accent-color)]/10 blur-[120px] pointer-events-none transition-all duration-700" />
       
@@ -79,10 +79,10 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-2">
             <div className="relative w-9 h-9 rounded-[8px] bg-gradient-to-br from-[var(--accent-color)] to-purple-600 flex items-center justify-center shadow-lg border border-white/10">
-              <span className="text-black font-black text-xl tracking-tighter">A</span>
+              <span className="text-black font-black text-xl tracking-tighter">M</span>
               <div className="absolute inset-0 rounded-[8px] border-glow pointer-events-none" />
             </div>
-            <span className="text-2xl font-black tracking-tight text-white">AURA</span>
+            <span className="text-2xl font-black tracking-tight text-white">MANTRA</span>
           </div>
           <h2 className="text-xl font-bold tracking-tight text-glow bg-gradient-to-r from-white to-[var(--text-secondary)] bg-clip-text text-transparent">
             Welcome Back

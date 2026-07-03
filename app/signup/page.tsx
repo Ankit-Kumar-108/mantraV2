@@ -83,7 +83,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-y-auto bg-[#0a0c0c] select-none">
+    <div className="h-screen w-full flex items-center justify-center p-4 relative overflow-y-auto bg-[#0a0c0c] select-none">
       {/* Background radial highlight */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-[var(--accent-color)]/10 blur-[120px] pointer-events-none transition-all duration-700" />
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { TRACKS, PLAYLISTS, ARTISTS, Track, Playlist } from './data/musicData';
+import { TRACKS, PLAYLISTS, ARTISTS, Track, fetchTracksFromApi } from './data/musicData';
 import Sidebar from './components/Sidebar';
 import PlayerShell from './components/PlayerShell';
 import HomeDiscover from './components/HomeDiscover';
@@ -27,6 +27,24 @@ export default function page() {
   const [shuffle, setShuffle] = useState<boolean>(false);
   const [repeat, setRepeat] = useState<'off' | 'all' | 'one'>('off');
   const [trackQueue, setTrackQueue] = useState<Track[]>(TRACKS);
+  const [tracks, setTracks] = useState<Track[]>([]);
+const [loading, setLoading] = useState<boolean>(true);
+
+useEffect(() => {
+  async function loadTracks() {
+    try {
+      const dbTracks = await fetchTracksFromApi();
+      setTracks(dbTracks);
+      // Also update the queue to use these dynamic tracks
+      setTrackQueue(dbTracks);
+    } catch (err) {
+      console.error("Failed to load DB tracks:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+  loadTracks();
+}, []);
 
   // User Library State
   const [likedTracks, setLikedTracks] = useState<string[]>(['track-1', 'track-5']);
@@ -80,8 +98,9 @@ export default function page() {
 
   // Toggle Play Pause
   const handlePlayPause = () => {
-    if (!currentTrack && TRACKS.length > 0) {
-      handlePlayTrack(TRACKS[0]);
+    const fallbackTracks = tracks.length > 0 ? tracks : TRACKS;
+    if (!currentTrack && fallbackTracks.length > 0) {
+      handlePlayTrack(fallbackTracks[0]);
       return;
     }
     
@@ -110,7 +129,7 @@ export default function page() {
     if (customQueue && customQueue.length > 0) {
       setTrackQueue(customQueue);
     } else if (trackQueue.length === 0 || !trackQueue.find(t => t.id === track.id)) {
-      setTrackQueue(TRACKS);
+      setTrackQueue(tracks.length > 0 ? tracks : TRACKS);
     }
     
     setCurrentTrack(track);
@@ -323,6 +342,7 @@ export default function page() {
           {/* Dynamic Component Switching */}
           {activeView === 'discover' && (
             <HomeDiscover
+              tracks={tracks}
               currentTrack={currentTrack}
               isPlaying={isPlaying}
               onPlayTrack={handlePlayTrack}
@@ -335,6 +355,7 @@ export default function page() {
 
           {activeView === 'search' && (
             <SearchExplore
+              tracks={tracks}
               currentTrack={currentTrack}
               isPlaying={isPlaying}
               onPlayTrack={handlePlayTrack}

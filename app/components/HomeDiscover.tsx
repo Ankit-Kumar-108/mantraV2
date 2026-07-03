@@ -5,6 +5,7 @@ import { Play, Pause, Heart, Sparkles, Plus, Check } from 'lucide-react';
 import { TRACKS, PLAYLISTS, Track, Playlist } from '../data/musicData';
 
 interface HomeDiscoverProps {
+  tracks: Track[];
   currentTrack: Track | null;
   isPlaying: boolean;
   onPlayTrack: (track: Track, trackList?: Track[]) => void;
@@ -15,6 +16,7 @@ interface HomeDiscoverProps {
 }
 
 export default function HomeDiscover({
+  tracks,
   currentTrack,
   isPlaying,
   onPlayTrack,
@@ -24,8 +26,9 @@ export default function HomeDiscover({
   onViewArtist,
 }: HomeDiscoverProps) {
   // Let's feature the "Synth Odyssey" album in the hero banner
+
   const heroAlbum = PLAYLISTS.find(p => p.id === 'album-1');
-  const heroTrack = TRACKS[0]; // "Electric Dreams"
+  const heroTrack = tracks[0] || TRACKS[0]; // "Electric Dreams"
 
   const handleHeroPlay = () => {
     if (heroAlbum) {
@@ -174,7 +177,7 @@ export default function HomeDiscover({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {TRACKS.slice(0, 6).map((track, idx) => {
+          {tracks.slice(0, 6).map((track, idx) => {
             const isCurrentPlaying = currentTrack?.id === track.id && isPlaying;
             const isLiked = likedTracks.includes(track.id);
 
