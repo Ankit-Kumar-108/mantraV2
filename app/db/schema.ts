@@ -13,21 +13,34 @@ export const artists = sqliteTable('artists', {
   bio: text('bio').notNull(),
 });
 
+export const trackArtists = sqliteTable('track_artists', {
+  trackId: text('track_id')
+    .notNull()
+    .references(() => tracks.id, { onDelete: 'cascade' }),
+  artistId: text('artist_id')
+    .notNull()
+    .references(() => artists.id, { onDelete: 'cascade' }),
+  role: text('role').$type<'primary' | 'featured'>().notNull().default('primary'),
+}, (t) => [
+  primaryKey({ columns: [t.trackId, t.artistId] })
+]);
+
+
 // 2. Tracks Table
 export const tracks = sqliteTable('tracks', {
-  id: text('id').primaryKey(), // e.g. "track-1"
+  id: text('id').primaryKey(),
   title: text('title').notNull(),
-  artistId: text('artist_id').notNull().references(() => artists.id, { onDelete: 'cascade' }),
   album: text('album').notNull(),
   coverUrl: text('cover_url').notNull(),
-  audioUrl: text('audio_url').notNull(), // Stream URL (Google Drive Alt Link or Cloudflare R2 link)
-  duration: text('duration').notNull(), // e.g. "6:12"
-  durationSec: integer('duration_sec').notNull(), // e.g. 372
+  audioUrl: text('audio_url').notNull(),
+  duration: text('duration').notNull(),
+  durationSec: integer('duration_sec').notNull(),
   genre: text('genre').notNull(),
   mood: text('mood').notNull(),
   plays: integer('plays').notNull().default(0),
   dateAdded: text('date_added').notNull(),
 });
+
 
 // 3. Playlists & Albums Table
 export const playlists = sqliteTable('playlists', {
@@ -95,28 +108,22 @@ export const verificationTokens = sqliteTable('verificationToken', {
 // Relations
 
 export const artistsRelations = relations(artists, ({ many }) => ({
-  tracks: many(tracks),
+  trackLinks: many(trackArtists),
 }));
 
-export const tracksRelations = relations(tracks, ({ one, many }) => ({
-  artist: one(artists, {
-    fields: [tracks.artistId],
-    references: [artists.id],
-  }),
+export const tracksRelations = relations(tracks, ({ many }) => ({
+  artistLinks: many(trackArtists),
   playlistLinks: many(playlistTracks),
 }));
 
-export const playlistsRelations = relations(playlists, ({ many }) => ({
-  trackLinks: many(playlistTracks),
-}));
-
-export const playlistTracksRelations = relations(playlistTracks, ({ one }) => ({
-  playlist: one(playlists, {
-    fields: [playlistTracks.playlistId],
-    references: [playlists.id],
-  }),
+export const trackArtistsRelations = relations(trackArtists, ({ one }) => ({
   track: one(tracks, {
-    fields: [playlistTracks.trackId],
+    fields: [trackArtists.trackId],
     references: [tracks.id],
   }),
+  artist: one(artists, {
+    fields: [trackArtists.artistId],
+    references: [artists.id],
+  }),
 }));
+

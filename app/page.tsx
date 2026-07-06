@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { TRACKS, PLAYLISTS, ARTISTS, Track, fetchTracksFromApi } from './data/musicData';
+import type { Howl } from 'howler';
+import { Track, Playlist, Artist, fetchTracksFromApi, fetchPlaylistsFromApi, fetchArtistFromApi } from './data/musicData';
 import Sidebar from './components/Sidebar';
 import PlayerShell from './components/PlayerShell';
 import HomeDiscover from './components/HomeDiscover';
@@ -15,8 +16,8 @@ import { signOut } from 'next-auth/react';
 export default function page() {
   // Navigation View State
   const [activeView, setActiveView] = useState<'discover' | 'search' | 'artist' | 'playlist'>('discover');
-  const [selectedArtistId, setSelectedArtistId] = useState<string>('aether');
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>('playlist-1');
+  const [selectedArtistId, setSelectedArtistId] = useState<string>('');
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>('');
 
   // Audio Playback State
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
@@ -26,24 +27,64 @@ export default function page() {
   const [volume, setVolume] = useState<number>(0.6);
   const [shuffle, setShuffle] = useState<boolean>(false);
   const [repeat, setRepeat] = useState<'off' | 'all' | 'one'>('off');
-  const [trackQueue, setTrackQueue] = useState<Track[]>(TRACKS);
+  const [trackQueue, setTrackQueue] = useState<Track[]>([]);
   const [tracks, setTracks] = useState<Track[]>([]);
-const [loading, setLoading] = useState<boolean>(true);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [HowlConstructor, setHowlConstructor] = useState<any>(null);
+
 
 useEffect(() => {
-  async function loadTracks() {
+  if (typeof window !== 'undefined') {
+    import('howler').then((mod) => {
+      setHowlConstructor(() => mod.Howl);
+    });
+  }
+}, []);
+
+// Detect ?artist=id query parameter on page mount to load artist profile
+useEffect(() => {
+  if (typeof window !== 'undefined') {
+    const searchParams = new URLSearchParams(window.location.search);
+    const artistParam = searchParams.get('artist');
+    if (artistParam) {
+      setSelectedArtistId(artistParam);
+      setActiveView('artist');
+      
+      // Clean up search parameters from the URL bar
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }
+}, []);
+
+useEffect(() => {
+  async function loadData() {
     try {
-      const dbTracks = await fetchTracksFromApi();
+      const [dbTracks, dbPlaylists, dbArtists] = await Promise.all([
+        fetchTracksFromApi(),
+        fetchPlaylistsFromApi(),
+        fetchArtistFromApi(),
+      ]);
       setTracks(dbTracks);
-      // Also update the queue to use these dynamic tracks
       setTrackQueue(dbTracks);
+      setPlaylists(dbPlaylists);
+      setArtists(dbArtists);
+
+      if (dbArtists.length > 0) {
+        setSelectedArtistId(dbArtists[0].id);
+      }
+      if (dbPlaylists.length > 0) {
+        setSelectedPlaylistId(dbPlaylists[0].id);
+      }
     } catch (err) {
-      console.error("Failed to load DB tracks:", err);
+      console.error("Failed to load data from database:", err);
     } finally {
       setLoading(false);
     }
   }
-  loadTracks();
+  loadData();
 }, []);
 
   // User Library State
@@ -53,8 +94,8 @@ useEffect(() => {
   // Theme Vibe State
   const [theme, setTheme] = useState<'sonic-deep' | 'electric-pulse' | 'pure-minimalist' | 'retro-futurist'>('sonic-deep');
 
-  // Ref to the HTML5 Audio element
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Ref to the Howler instance
+  const howlRef = useRef<Howl | null>(null);
 
   // Load saved theme on mount
   useEffect(() => {
@@ -72,55 +113,71 @@ useEffect(() => {
 
   // Handle Audio Source & Playback Changes
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (currentTrack) {
-      const prevSrc = audio.getAttribute('src');
-      if (prevSrc !== currentTrack.audioUrl) {
-        audio.src = currentTrack.audioUrl;
-        audio.load();
-      }
-
-      if (isPlaying) {
-        audio.play().catch((err) => {
-          console.warn("Autoplay blocked. Press play to start music.", err);
-          setIsPlaying(false);
-        });
-      } else {
-        audio.pause();
-      }
-    } else {
-      audio.pause();
-      setIsPlaying(false);
+  if (!HowlConstructor || !currentTrack) {
+    if (howlRef.current) {
+      howlRef.current.unload();
+      howlRef.current = null;
     }
-  }, [currentTrack]);
+    return;
+  }
+
+  if (howlRef.current) {
+    howlRef.current.unload();
+  }
+
+  const sound = new HowlConstructor({
+    src: [currentTrack.audioUrl],
+    html5: true, // Required to stream larger files and bypass potential CORS issues
+    volume: volume,
+    onplay: () => setIsPlaying(true),
+    onpause: () => setIsPlaying(false),
+    onstop: () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    },
+    onend: () => {
+      handleSkipNext();
+    },
+    onload: () => {
+      setDuration(sound.duration());
+    }
+  });
+
+  howlRef.current = sound;
+
+  if (isPlaying) {
+    sound.play();
+  }
+
+  return () => {
+    if (howlRef.current) {
+      howlRef.current.unload();
+    }
+  };
+}, [currentTrack, HowlConstructor]);
+
 
   // Toggle Play Pause
   const handlePlayPause = () => {
-    const fallbackTracks = tracks.length > 0 ? tracks : TRACKS;
-    if (!currentTrack && fallbackTracks.length > 0) {
-      handlePlayTrack(fallbackTracks[0]);
+    if (!currentTrack && tracks.length > 0) {
+      handlePlayTrack(tracks[0]);
       return;
     }
     
-    const audio = audioRef.current;
+    const audio = howlRef.current;
     if (!audio) return;
 
     if (isPlaying) {
       audio.pause();
-      setIsPlaying(false);
     } else {
-      audio.play()
-        .then(() => setIsPlaying(true))
-        .catch((err) => console.error("Play failed:", err));
+      audio.play();
     }
   };
 
   // Sync Volume
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
+    if (howlRef.current) {
+      howlRef.current.volume(volume);
     }
   }, [volume]);
 
@@ -129,7 +186,7 @@ useEffect(() => {
     if (customQueue && customQueue.length > 0) {
       setTrackQueue(customQueue);
     } else if (trackQueue.length === 0 || !trackQueue.find(t => t.id === track.id)) {
-      setTrackQueue(tracks.length > 0 ? tracks : TRACKS);
+      setTrackQueue(tracks);
     }
     
     setCurrentTrack(track);
@@ -142,9 +199,9 @@ useEffect(() => {
     if (!currentTrack || trackQueue.length === 0) return;
 
     if (repeat === 'one') {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(() => {});
+      if (howlRef.current) {
+        howlRef.current.seek(0);
+        howlRef.current.play();
         setCurrentTime(0);
       }
       return;
@@ -166,8 +223,8 @@ useEffect(() => {
       } else {
         // Stop playing
         setIsPlaying(false);
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0;
+        if (howlRef.current) {
+          howlRef.current.stop();
         }
         setCurrentTime(0);
       }
@@ -182,8 +239,8 @@ useEffect(() => {
 
     if (currentTime > 4) {
       // Restart track
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
+      if (howlRef.current) {
+        howlRef.current.seek(0);
       }
       setCurrentTime(0);
       return;
@@ -202,29 +259,33 @@ useEffect(() => {
     }
   };
 
-  // Audio Event: Time Update
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
-  };
+  // Poll currentTime while playing
+  useEffect(() => {
+    let animationFrameId: number;
 
-  // Audio Event: Metadata Loaded
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration);
-    }
-  };
+    const updateProgress = () => {
+      if (howlRef.current && isPlaying) {
+        const currentPos = howlRef.current.seek() as number;
+        if (typeof currentPos === 'number') {
+          setCurrentTime(currentPos);
+        }
+        animationFrameId = requestAnimationFrame(updateProgress);
+      }
+    };
 
-  // Audio Event: Playback Ended
-  const handleAudioEnded = () => {
-    handleSkipNext();
-  };
+    if (isPlaying) {
+      animationFrameId = requestAnimationFrame(updateProgress);
+    }
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isPlaying, currentTrack]);
 
   // Scrub Timeline
   const handleScrub = (time: number) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
+    if (howlRef.current) {
+      howlRef.current.seek(time);
       setCurrentTime(time);
     }
   };
@@ -277,13 +338,7 @@ useEffect(() => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--bg-color)] text-[var(--text-primary)]">
-      {/* Invisible HTML5 Audio Tag */}
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleAudioEnded}
-      />
+      {/* Howler.js is initialized dynamically and does not require a React audio element */}
 
       {/* Main Workspace Layout */}
       <div className="flex flex-1 overflow-hidden w-full">
@@ -298,6 +353,8 @@ useEffect(() => {
           theme={theme}
           setTheme={setTheme}
           likedTracksCount={likedTracks.length}
+          playlists={playlists}
+          artists={artists}
         />
 
         {/* Dynamic Display Panel */}
@@ -310,8 +367,8 @@ useEffect(() => {
               <span className="text-xs md:text-sm font-bold tracking-widest text-[var(--text-secondary)] uppercase truncate">
                 {activeView === 'discover' && 'Home & Discover'}
                 {activeView === 'search' && 'Explore Soundscapes'}
-                {activeView === 'artist' && `Artist – ${ARTISTS.find(a => a.id === selectedArtistId)?.name}`}
-                {activeView === 'playlist' && `Playlist – ${PLAYLISTS.find(p => p.id === selectedPlaylistId)?.name}`}
+                {activeView === 'artist' && `Artist – ${artists.find(a => a.id === selectedArtistId)?.name || 'Profile'}`}
+                {activeView === 'playlist' && `Playlist – ${playlists.find(p => p.id === selectedPlaylistId)?.name || 'Playlist'}`}
               </span>
               <button onClick={() => signOut({callbackUrl: '/'})} className='size-12 flex justify-center items-center bg-red-500 rounded-full cursor-pointer'>
                 <LogOut className='w-5 h-5 flex-shrink-0' />
@@ -320,7 +377,7 @@ useEffect(() => {
 
             {/* Visualizer inside Header (Desktop/Tablet only) */}
             <div className="hidden sm:flex w-40 md:w-64 h-10 border border-[var(--glass-border)] rounded-[8px] bg-black/30 overflow-hidden items-end p-1">
-              <Visualizer audioRef={audioRef} isPlaying={isPlaying} theme={theme} />
+              <Visualizer audioRef={howlRef} isPlaying={isPlaying} theme={theme} />
             </div>
 
             {/* Mobile Vibe Toggler */}
@@ -343,6 +400,8 @@ useEffect(() => {
           {activeView === 'discover' && (
             <HomeDiscover
               tracks={tracks}
+              playlists={playlists}
+              artists={artists}
               currentTrack={currentTrack}
               isPlaying={isPlaying}
               onPlayTrack={handlePlayTrack}
@@ -383,6 +442,7 @@ useEffect(() => {
           {activeView === 'playlist' && (
             <PlaylistView
               playlistId={selectedPlaylistId}
+              playlists={playlists}
               currentTrack={currentTrack}
               isPlaying={isPlaying}
               onPlayTrack={handlePlayTrack}
@@ -415,7 +475,7 @@ useEffect(() => {
               <span className="text-[10px] font-medium font-sans">Search</span>
             </button>
             <button
-              onClick={() => handleViewArtist(selectedArtistId || ARTISTS[0].id)}
+              onClick={() => handleViewArtist(selectedArtistId || (artists[0]?.id || ''))}
               className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 transition-all active-scale ${
                 activeView === 'artist' ? 'text-[var(--accent-color)] text-glow' : 'text-[var(--text-secondary)]'
               }`}
@@ -424,7 +484,7 @@ useEffect(() => {
               <span className="text-[10px] font-medium font-sans">Artist</span>
             </button>
             <button
-              onClick={() => handleViewPlaylist(selectedPlaylistId || PLAYLISTS[0].id)}
+              onClick={() => handleViewPlaylist(selectedPlaylistId || (playlists[0]?.id || ''))}
               className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 transition-all active-scale ${
                 activeView === 'playlist' ? 'text-[var(--accent-color)] text-glow' : 'text-[var(--text-secondary)]'
               }`}
@@ -454,7 +514,7 @@ useEffect(() => {
         onToggleShuffle={handleToggleShuffle}
         repeat={repeat}
         onToggleRepeat={handleToggleRepeat}
-        onViewPlaylist={() => currentTrack && handleViewPlaylist(PLAYLISTS.find(p => p.tracks.some(t => t.id === currentTrack.id))?.id || 'playlist-1')}
+        onViewPlaylist={() => currentTrack && handleViewPlaylist(playlists.find(p => p.tracks.some(t => t.id === currentTrack.id))?.id || '')}
       />
     </div>
   );

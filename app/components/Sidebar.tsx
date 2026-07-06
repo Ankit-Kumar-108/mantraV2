@@ -5,6 +5,7 @@ import {
   Home, 
   Search, 
   User, 
+  Users,
   ListMusic, 
   Heart, 
   Palette, 
@@ -12,7 +13,8 @@ import {
   Disc,
   Verified
 } from 'lucide-react';
-import { PLAYLISTS, ARTISTS, Playlist } from '../data/musicData';
+import { Playlist, Artist } from '../data/musicData';
+import Link from 'next/link';
 
 interface SidebarProps {
   activeView: string;
@@ -24,6 +26,8 @@ interface SidebarProps {
   theme: string;
   setTheme: (theme: 'sonic-deep' | 'electric-pulse' | 'pure-minimalist' | 'retro-futurist') => void;
   likedTracksCount: number;
+  playlists: Playlist[];
+  artists: Artist[];
 }
 
 export default function Sidebar({
@@ -36,6 +40,8 @@ export default function Sidebar({
   theme,
   setTheme,
   likedTracksCount,
+  playlists,
+  artists,
 }: SidebarProps) {
 
   const handlePlaylistClick = (id: string) => {
@@ -93,8 +99,16 @@ export default function Sidebar({
           Search & Explore
         </button>
 
+        <Link
+          href="/artists"
+          className="flex items-center gap-3 px-4 py-3 rounded-[8px] text-sm font-medium transition-all active-scale text-[var(--text-secondary)] hover:text-white hover:bg-white/5"
+        >
+          <Users className="w-4 h-4" />
+          All Artists
+        </Link>
+
         <button
-          onClick={() => handleArtistClick(selectedArtistId || ARTISTS[0].id)}
+          onClick={() => handleArtistClick(selectedArtistId || (artists[0]?.id || ''))}
           className={`flex items-center gap-3 px-4 py-3 rounded-[8px] text-sm font-medium transition-all active-scale ${
             activeView === 'artist'
               ? 'bg-[var(--panel-bg-hover)] text-[var(--accent-color)] border-l-2 border-[var(--accent-color)] shadow-md'
@@ -106,7 +120,7 @@ export default function Sidebar({
         </button>
 
         <button
-          onClick={() => handlePlaylistClick(selectedPlaylistId || PLAYLISTS[0].id)}
+          onClick={() => handlePlaylistClick(selectedPlaylistId || (playlists[0]?.id || ''))}
           className={`flex items-center gap-3 px-4 py-3 rounded-[8px] text-sm font-medium transition-all active-scale ${
             activeView === 'playlist'
               ? 'bg-[var(--panel-bg-hover)] text-[var(--accent-color)] border-l-2 border-[var(--accent-color)] shadow-md'
@@ -140,7 +154,7 @@ export default function Sidebar({
           <span>Featured Playlists</span>
         </div>
         <div className="flex flex-col gap-1 pb-4">
-          {PLAYLISTS.map((playlist) => (
+          {playlists.map((playlist) => (
             <button
               key={playlist.id}
               onClick={() => handlePlaylistClick(playlist.id)}

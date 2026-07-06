@@ -2,10 +2,12 @@
 
 import React from 'react';
 import { Play, Pause, Heart, Sparkles, Plus, Check } from 'lucide-react';
-import { TRACKS, PLAYLISTS, Track, Playlist } from '../data/musicData';
+import { Track, Playlist, Artist } from '../data/musicData';
 
 interface HomeDiscoverProps {
   tracks: Track[];
+  playlists: Playlist[];
+  artists: Artist[];
   currentTrack: Track | null;
   isPlaying: boolean;
   onPlayTrack: (track: Track, trackList?: Track[]) => void;
@@ -17,6 +19,8 @@ interface HomeDiscoverProps {
 
 export default function HomeDiscover({
   tracks,
+  playlists,
+  artists,
   currentTrack,
   isPlaying,
   onPlayTrack,
@@ -27,10 +31,11 @@ export default function HomeDiscover({
 }: HomeDiscoverProps) {
   // Let's feature the "Synth Odyssey" album in the hero banner
 
-  const heroAlbum = PLAYLISTS.find(p => p.id === 'album-1');
-  const heroTrack = tracks[0] || TRACKS[0]; // "Electric Dreams"
+  const heroAlbum = playlists.find(p => p.type === 'album') || playlists[0] || null;
+  const heroTrack = tracks[0] || null;
 
   const handleHeroPlay = () => {
+    if (!heroTrack) return;
     if (heroAlbum) {
       onPlayTrack(heroTrack, heroAlbum.tracks);
     } else {
@@ -38,7 +43,7 @@ export default function HomeDiscover({
     }
   };
 
-  const isHeroTrackPlaying = currentTrack?.id === heroTrack.id && isPlaying;
+  const isHeroTrackPlaying = heroTrack && currentTrack?.id === heroTrack.id && isPlaying;
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8 select-none">
@@ -78,51 +83,61 @@ export default function HomeDiscover({
             New Release
           </span>
           <h2 className="text-2xl md:text-5xl font-extrabold tracking-tight mb-2 md:mb-3 text-glow">
-            {heroTrack.album}
+            {heroTrack ? heroTrack.album : "Welcome to AURA"}
           </h2>
           <p className="text-xs md:text-sm text-[var(--text-secondary)] mb-4 md:mb-6 line-clamp-2 md:line-clamp-3">
-            Experience the latest masterpiece from <span className="text-white hover:underline cursor-pointer" onClick={() => onViewArtist(heroTrack.artistId)}>{heroTrack.artistName}</span>. A full-length synthesised odyssey traversing analog arpeggios and cybernetic wave modulations.
+            {heroTrack ? (
+              <>
+                Experience the latest masterpiece from <span className="text-white hover:underline cursor-pointer" onClick={() => onViewArtist(heroTrack.artistId)}>{heroTrack.artistName}</span>. A full-length synthesised odyssey traversing analog arpeggios and cybernetic wave modulations.
+              </>
+            ) : (
+              "Get started by uploading your own audio tracks in the upload section to build your dynamic library."
+            )}
           </p>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={handleHeroPlay}
-              className="flex items-center gap-2 bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] text-black font-semibold text-xs md:text-sm px-4 md:px-6 py-2.5 md:py-3 rounded-full active-scale transition-all border-glow shadow-lg"
-            >
-              {isHeroTrackPlaying ? (
-                <>
-                  <Pause className="w-4 h-4 fill-current text-black" />
-                  Pause
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 fill-current text-black translate-x-[1px]" />
-                  Play Odyssey
-                </>
-              )}
-            </button>
-            {heroAlbum && (
+          {heroTrack && (
+            <div className="flex flex-wrap items-center gap-3">
               <button
-                onClick={() => onViewPlaylist(heroAlbum.id)}
-                className="bg-white/10 hover:bg-white/15 border border-[var(--glass-border)] text-white font-semibold text-xs md:text-sm px-4 md:px-6 py-2.5 md:py-3 rounded-full active-scale transition-colors"
+                onClick={handleHeroPlay}
+                className="flex items-center gap-2 bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] text-black font-semibold text-xs md:text-sm px-4 md:px-6 py-2.5 md:py-3 rounded-full active-scale transition-all border-glow shadow-lg"
               >
-                View Album
+                {isHeroTrackPlaying ? (
+                  <>
+                    <Pause className="w-4 h-4 fill-current text-black" />
+                    Pause
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 fill-current text-black translate-x-[1px]" />
+                    Play Odyssey
+                  </>
+                )}
               </button>
-            )}
-          </div>
+              {heroAlbum && (
+                <button
+                  onClick={() => onViewPlaylist(heroAlbum.id)}
+                  className="bg-white/10 hover:bg-white/15 border border-[var(--glass-border)] text-white font-semibold text-xs md:text-sm px-4 md:px-6 py-2.5 md:py-3 rounded-full active-scale transition-colors"
+                >
+                  View Album
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Hero Album Cover Float */}
-        <div className="absolute right-12 bottom-12 w-48 h-48 rounded-[8px] overflow-hidden shadow-2xl border border-white/10 hidden md:block group cursor-pointer" onClick={() => heroAlbum && onViewPlaylist(heroAlbum.id)}>
-          <img 
-            src={heroTrack.coverUrl} 
-            alt="Album cover" 
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-          />
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <Play className="w-12 h-12 text-[var(--accent-color)] fill-current" />
+        {heroTrack && (
+          <div className="absolute right-12 bottom-12 w-48 h-48 rounded-[8px] overflow-hidden shadow-2xl border border-white/10 hidden md:block group cursor-pointer" onClick={() => heroAlbum && onViewPlaylist(heroAlbum.id)}>
+            <img 
+              src={heroTrack.coverUrl} 
+              alt="Album cover" 
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <Play className="w-12 h-12 text-[var(--accent-color)] fill-current" />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Made For You - Playlists */}
@@ -133,7 +148,7 @@ export default function HomeDiscover({
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {PLAYLISTS.map((playlist) => (
+          {playlists.map((playlist) => (
             <div
               key={playlist.id}
               className="glass-panel glass-panel-hover p-4 rounded-[12px] group cursor-pointer transition-all flex flex-col h-full"
@@ -187,7 +202,7 @@ export default function HomeDiscover({
                 className={`flex items-center justify-between p-3 rounded-[8px] hover:bg-white/5 border border-transparent transition-all group cursor-pointer ${
                   currentTrack?.id === track.id ? 'bg-white/5 border-[var(--glass-border)]' : ''
                 }`}
-                onClick={() => onPlayTrack(track, TRACKS)}
+                onClick={() => onPlayTrack(track, tracks)}
               >
                 <div className="flex items-center gap-4 min-w-0">
                   <span className="text-sm font-mono text-[var(--text-muted)] w-4 text-center">

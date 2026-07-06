@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/app/db";
-import { tracks, artists } from "@/app/db/schema";
-import { eq } from "drizzle-orm";
+import { tracks, artists, trackArtists } from "@/app/db/schema";
+import { and, eq } from "drizzle-orm";
 import { r2Client } from "@/app/lib/r2";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -27,12 +27,13 @@ export async function GET(req: NextRequest) {
                 mood: tracks.mood,
                 plays: tracks.plays,
                 dateAdded: tracks.dateAdded,
-                artistId: tracks.artistId,
+                artistId: trackArtists.artistId,
                 artistName: artists.name,
                 artistAvatar: artists.avatarUrl,
             })
             .from(tracks)
-            .leftJoin(artists, eq(tracks.artistId, artists.id));
+            .leftJoin(trackArtists, and(eq(tracks.id, trackArtists.trackId), eq(trackArtists.role, 'primary')))
+            .leftJoin(artists, eq(trackArtists.artistId, artists.id));
 
         // Build full URLs for covers (public) and audio (presigned)
         const publicPrefix = process.env.R2_PUBLIC_URL_PREFIX;

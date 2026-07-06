@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Play, 
   Pause, 
@@ -56,10 +56,17 @@ export default function PlayerShell({
   onToggleRepeat,
   onViewPlaylist,
 }: PlayerShellProps) {
+  const [isMounted, setIsMounted] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [prevVolume, setPrevVolume] = useState(0.5);
   const [showDevicePopover, setShowDevicePopover] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState('This Device (AURA High-Fi)');
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const isDisabled = !isMounted || !currentTrack;
 
   const formatTime = (secs: number) => {
     if (isNaN(secs)) return '0:00';
@@ -166,7 +173,7 @@ export default function PlayerShell({
           <button
             onClick={onSkipPrevious}
             title="Previous"
-            disabled={!currentTrack}
+            disabled={isDisabled}
             className="p-1 rounded-full text-[var(--text-secondary)] hover:text-white active-scale disabled:opacity-50 disabled:pointer-events-none transition-colors"
           >
             <SkipBack className="w-4 h-4 md:w-5 md:h-5 fill-current" />
@@ -174,7 +181,7 @@ export default function PlayerShell({
 
           <button
             onClick={onPlayPause}
-            disabled={!currentTrack}
+            disabled={isDisabled}
             className="w-8.5 h-8.5 md:w-9 md:h-9 rounded-full bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] text-black flex items-center justify-center active-scale shadow-md hover:scale-105 disabled:opacity-50 disabled:pointer-events-none transition-all border-glow"
           >
             {isPlaying ? (
@@ -187,7 +194,7 @@ export default function PlayerShell({
           <button
             onClick={onSkipNext}
             title="Next"
-            disabled={!currentTrack}
+            disabled={isDisabled}
             className="p-1 rounded-full text-[var(--text-secondary)] hover:text-white active-scale disabled:opacity-50 disabled:pointer-events-none transition-colors"
           >
             <SkipForward className="w-4 h-4 md:w-5 md:h-5 fill-current" />
@@ -226,7 +233,7 @@ export default function PlayerShell({
               max={duration || 100}
               value={currentTime || 0}
               onChange={handleScrubSlider}
-              disabled={!currentTrack}
+              disabled={isDisabled}
               className="absolute top-1/2 left-0 right-0 -translate-y-1/2 w-full custom-slider cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
             />
           </div>

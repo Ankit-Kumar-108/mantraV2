@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Search as SearchIcon, History, X, Play, Pause, Calendar, ArrowRight, Heart } from 'lucide-react';
-import { TRACKS, Track } from '../data/musicData';
+import { Track } from '../data/musicData';
 
 interface SearchExploreProps {
   tracks: Track[]
@@ -339,8 +339,9 @@ export default function SearchExplore({
                     <span className="text-[10px] font-mono text-[var(--text-muted)] mb-2">{event.listeners}</span>
                     <button
                       onClick={() => {
-                        // Play track 1 or 2 as a simulated live event audio
-                        onPlayTrack(TRACKS[idx % TRACKS.length]);
+                        if (tracks.length > 0) {
+                          onPlayTrack(tracks[idx % tracks.length]);
+                        }
                       }}
                       className="flex items-center gap-1 bg-white/10 hover:bg-[var(--accent-color)] hover:text-black font-semibold text-[10px] px-3 py-1.5 rounded-full active-scale transition-all"
                     >

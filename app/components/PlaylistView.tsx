@@ -14,10 +14,11 @@ import {
   CheckCircle,
   Loader2
 } from 'lucide-react';
-import { PLAYLISTS, Playlist, Track } from '../data/musicData';
+import { Playlist, Track } from '../data/musicData';
 
 interface PlaylistViewProps {
   playlistId: string;
+  playlists: Playlist[];
   currentTrack: Track | null;
   isPlaying: boolean;
   onPlayTrack: (track: Track, trackList?: Track[]) => void;
@@ -30,6 +31,7 @@ interface PlaylistViewProps {
 
 export default function PlaylistView({
   playlistId,
+  playlists,
   currentTrack,
   isPlaying,
   onPlayTrack,
@@ -43,7 +45,15 @@ export default function PlaylistView({
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   const [downloadStatus, setDownloadStatus] = useState<'idle' | 'downloading' | 'completed'>('idle');
 
-  const playlist = PLAYLISTS.find(p => p.id === playlistId) || PLAYLISTS[0];
+  const playlist = playlists.find(p => p.id === playlistId) || playlists[0] || {
+    id: '',
+    name: 'No Playlist Selected',
+    description: 'Upload some tracks to get started',
+    coverUrl: '',
+    creator: '',
+    tracks: [],
+    type: 'playlist'
+  };
 
   // Reset download state if playlist changes
   useEffect(() => {

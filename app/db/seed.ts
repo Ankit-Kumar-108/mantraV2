@@ -1,7 +1,7 @@
 // app/db/seed.ts
 import "dotenv/config"
 import { db } from '.';
-import { artists, tracks, playlists, playlistTracks } from './schema';
+import { artists, tracks, playlists, playlistTracks, trackArtists } from './schema';
 import { ARTISTS, TRACKS, PLAYLISTS } from '../data/musicData';
 
 async function seed() {
@@ -10,6 +10,7 @@ async function seed() {
   // 1. Clear existing data (to avoid duplicate key conflicts if run multiple times)
   console.log("🧹 Cleaning existing data...");
   await db.delete(playlistTracks);
+  await db.delete(trackArtists);
   await db.delete(tracks);
   await db.delete(playlists);
   await db.delete(artists);
@@ -34,7 +35,6 @@ async function seed() {
     await db.insert(tracks).values({
       id: track.id,
       title: track.title,
-      artistId: track.artistId,
       album: track.album,
       coverUrl: track.coverUrl,
       audioUrl: track.audioUrl,
@@ -45,6 +45,14 @@ async function seed() {
       plays: track.plays,
       dateAdded: track.dateAdded,
     });
+
+    if (track.artistId) {
+      await db.insert(trackArtists).values({
+        trackId: track.id,
+        artistId: track.artistId,
+        role: 'primary',
+      });
+    }
   }
 
   // 4. Insert Playlists and Playlist-Track Links

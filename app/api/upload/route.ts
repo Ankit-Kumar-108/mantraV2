@@ -4,10 +4,11 @@ import { corsHeaders } from "@/app/lib/cors";
 import { auth } from "@/auth";
 import { db } from "@/app/db";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { tracks } from "@/app/db/schema";
+import { eq } from "drizzle-orm";
+import { artists, trackArtists, tracks, playlists, playlistTracks } from "@/app/db/schema";
 
 export async function OPTIONS() {
-    return new Response(null, {status: 204, headers: corsHeaders});
+    return new Response(null, { status: 204, headers: corsHeaders });
 }
 
 export async function POST(req: NextRequest) {
@@ -33,6 +34,12 @@ export async function POST(req: NextRequest) {
         // 2. Parse form data
         const formData = await req.formData();
         const artistId = formData.get('artistId') as string;
+        const featuredArtistIdsStr = formData.get('featuredArtistIds') as string || '';
+        const featuredArtistIds = featuredArtistIdsStr
+            ? featuredArtistIdsStr.split(',').map(id => id.trim())
+            : [];
+
+        const artistName = (formData.get('artistName') as string) || artistId;
         const title = formData.get('title') as string;
         const album = (formData.get('album') as string) || 'Single';
         const duration = formData.get('duration') as string;
@@ -50,6 +57,17 @@ export async function POST(req: NextRequest) {
                 { status: 400, headers: corsHeaders }
             );
         }
+
+        // Fetch primary artist details from Turso DB
+        const [primaryArtist] = await db
+            .select()
+            .from(artists)
+            .where(eq(artists.id, artistId))
+            .limit(1);
+
+        const officialName = primaryArtist ? primaryArtist.name : artistId;
+        const cleanArtistName = officialName.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '');
+
 
         if (!audioFile || !coverFile) {
             return NextResponse.json(
@@ -85,8 +103,9 @@ export async function POST(req: NextRequest) {
         const timestamp = Date.now();
         const cleanAudioName = audioFile.name.replace(/\s+/g, '_');
         const cleanCoverName = coverFile.name.replace(/\s+/g, '_');
-        const audioKey = `songs/${timestamp}-${cleanAudioName}`;
-        const coverKey = `covers/${timestamp}-${cleanCoverName}`;
+        // Organize upload path by the primary artist
+        const audioKey = `artists/${cleanArtistName}/songs/${timestamp}-${cleanAudioName}`;
+        const coverKey = `artists/${cleanArtistName}/covers/${timestamp}-${cleanCoverName}`;
 
         const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
         const coverBuffer = Buffer.from(await coverFile.arrayBuffer());
@@ -107,12 +126,27 @@ export async function POST(req: NextRequest) {
             })),
         ]);
 
+        // Check if artist exists, if not create one
+        const [existingArtist] = await db.select().from(artists).where(eq(artists.id, artistId)).limit(1);
+
+        if (!existingArtist) {
+            await db.insert(artists).values({
+                id: artistId,
+                name: artistName,
+                avatarUrl: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=400&h=400&fit=crop",
+                bannerUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1200&h=400&fit=crop",
+                monthlyListeners: 0,
+                verified: false,
+                bio: "Independent artist on AURA",
+            });
+        }
+
         // 8. Insert track record into Turso DB
+        // 1. Insert Track record
         const trackId = `track-${crypto.randomUUID()}`;
         await db.insert(tracks).values({
             id: trackId,
             title,
-            artistId,
             album,
             coverUrl: coverKey,
             audioUrl: audioKey,
@@ -122,6 +156,50 @@ export async function POST(req: NextRequest) {
             mood,
             dateAdded: new Date().toISOString().split('T')[0],
         });
+
+        // 2. Build insertion list for track-artist relationships
+        const relationValues = [
+            { trackId, artistId: artistId, role: 'primary' as const },
+            ...featuredArtistIds.map(fId => ({
+                trackId,
+                artistId: fId,
+                role: 'featured' as const
+            }))
+        ];
+
+        // 3. Insert relationships into Turso
+        await db.insert(trackArtists).values(relationValues);
+
+        // 4. Automatically create album and link track to it if it is not a "Single"
+        if (album && album.toLowerCase() !== 'single') {
+            const albumId = `album-${album.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '')}`;
+            
+            // Check if album already exists
+            const [existingAlbum] = await db
+                .select()
+                .from(playlists)
+                .where(eq(playlists.id, albumId))
+                .limit(1);
+
+            if (!existingAlbum) {
+                await db.insert(playlists).values({
+                    id: albumId,
+                    name: album,
+                    description: `Album by ${artistName}`,
+                    coverUrl: coverKey,
+                    creator: artistName,
+                    type: 'album',
+                    releaseYear: new Date().getFullYear(),
+                });
+            }
+
+            // Link track to this album
+            await db.insert(playlistTracks).values({
+                playlistId: albumId,
+                trackId: trackId,
+            });
+        }
+
 
         return NextResponse.json(
             { success: true, message: 'Track uploaded and added in DB successfully', trackId },

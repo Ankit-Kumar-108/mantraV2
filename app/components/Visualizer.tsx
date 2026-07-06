@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 
 interface VisualizerProps {
-  audioRef: React.RefObject<HTMLAudioElement | null>;
+  audioRef: React.RefObject<any>;
   isPlaying: boolean;
   theme: string;
 }

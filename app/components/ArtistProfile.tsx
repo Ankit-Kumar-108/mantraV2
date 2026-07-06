@@ -1,8 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Play, Pause, Heart, Award, Info, Disc, Users } from 'lucide-react';
 import { ARTISTS, PLAYLISTS, TRACKS, Track, Playlist } from '../data/musicData';
+
+interface ArtistTrack extends Track {
+  role?: 'primary' | 'featured';
+}
+
+interface ArtistProfileData {
+  id: string;
+  name: string;
+  avatarUrl: string;
+  bannerUrl: string;
+  monthlyListeners: number;
+  verified: boolean;
+  bio: string;
+  topTracks: ArtistTrack[];
+}
 
 interface ArtistProfileProps {
   artistId: string;
@@ -24,21 +39,67 @@ export default function ArtistProfile({
   onViewPlaylist,
 }: ArtistProfileProps) {
   const [activeTab, setActiveTab] = useState<'top' | 'albums' | 'about'>('top');
+  const [artist, setArtist] = useState<ArtistProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const artist = ARTISTS.find(a => a.id === artistId) || ARTISTS[0];
-  
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        setIsLoading(true);
+        setError('');
+        const res = await fetch(`/api/artists/${artistId}`);
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          setArtist(data.artist);
+        } else {
+          throw new Error(data.message || 'Failed to fetch profile.');
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to load artist details.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchProfile();
+  }, [artistId]);
+
+
   // Find albums for this artist
-  const artistAlbums = PLAYLISTS.filter(
-    p => p.type === 'album' && p.creator.toLowerCase() === artist.name.toLowerCase()
-  );
+  const artistAlbums = artist
+    ? PLAYLISTS.filter(
+        p => p.type === 'album' && p.creator.toLowerCase() === artist.name.toLowerCase()
+      )
+    : [];
 
   const handlePlayTopTracks = () => {
-    if (artist.topTracks.length > 0) {
+    if (artist && artist.topTracks.length > 0) {
       onPlayTrack(artist.topTracks[0], artist.topTracks);
     }
   };
 
-  const isAnyTrackPlaying = artist.topTracks.some(t => t.id === currentTrack?.id) && isPlaying;
+  const isAnyTrackPlaying =
+    (artist?.topTracks || []).some(t => t.id === currentTrack?.id) && isPlaying;
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center py-20 bg-[#0a0c0c] text-white">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent-color)] mb-4" />
+        <p className="text-xs text-[var(--text-secondary)] font-mono">Loading artist details...</p>
+      </div>
+    );
+  }
+
+  if (error || !artist) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center py-20 bg-[#0a0c0c] text-white text-center">
+        <p className="text-sm text-red-400 mb-4">{error || 'Artist profile not found'}</p>
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex-1 overflow-y-auto select-none">
@@ -46,9 +107,9 @@ export default function ArtistProfile({
       <div className="relative h-80 md:h-96 w-full flex flex-col justify-end p-6 md:p-12 border-b border-[var(--glass-border)]">
         {/* Background Banner with Gradient Overlay */}
         <div className="absolute inset-0 z-0">
-          <img 
-            src={artist.bannerUrl} 
-            alt={artist.name} 
+          <img
+            src={artist.bannerUrl}
+            alt={artist.name}
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-color)] via-black/55 to-transparent" />
@@ -58,9 +119,9 @@ export default function ArtistProfile({
         {/* Artist Header Info */}
         <div className="relative z-10 flex flex-col md:flex-row items-center md:items-end text-center md:text-left gap-4 md:gap-6">
           <div className="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-2 border-white/20 shadow-2xl flex-shrink-0 bg-zinc-800">
-            <img 
-              src={artist.avatarUrl} 
-              alt={artist.name} 
+            <img
+              src={artist.avatarUrl}
+              alt={artist.name}
               className="w-full h-full object-cover"
             />
           </div>
@@ -112,11 +173,10 @@ export default function ArtistProfile({
       <div className="px-4 md:px-8 border-b border-[var(--glass-border)] flex justify-center md:justify-start gap-6 text-sm font-semibold text-[var(--text-secondary)]">
         <button
           onClick={() => setActiveTab('top')}
-          className={`py-3 transition-all relative ${
-            activeTab === 'top' 
-              ? 'text-[var(--accent-color)] font-bold text-glow' 
-              : 'hover:text-white'
-          }`}
+          className={`py-3 transition-all relative ${activeTab === 'top'
+            ? 'text-[var(--accent-color)] font-bold text-glow'
+            : 'hover:text-white'
+            }`}
         >
           Top Tracks
           {activeTab === 'top' && (
@@ -125,11 +185,10 @@ export default function ArtistProfile({
         </button>
         <button
           onClick={() => setActiveTab('albums')}
-          className={`py-3 transition-all relative ${
-            activeTab === 'albums' 
-              ? 'text-[var(--accent-color)] font-bold text-glow' 
-              : 'hover:text-white'
-          }`}
+          className={`py-3 transition-all relative ${activeTab === 'albums'
+            ? 'text-[var(--accent-color)] font-bold text-glow'
+            : 'hover:text-white'
+            }`}
         >
           Popular Albums
           {activeTab === 'albums' && (
@@ -138,11 +197,10 @@ export default function ArtistProfile({
         </button>
         <button
           onClick={() => setActiveTab('about')}
-          className={`py-3 transition-all relative ${
-            activeTab === 'about' 
-              ? 'text-[var(--accent-color)] font-bold text-glow' 
-              : 'hover:text-white'
-          }`}
+          className={`py-3 transition-all relative ${activeTab === 'about'
+            ? 'text-[var(--accent-color)] font-bold text-glow'
+            : 'hover:text-white'
+            }`}
         >
           About
           {activeTab === 'about' && (
@@ -163,18 +221,17 @@ export default function ArtistProfile({
                 <div
                   key={track.id}
                   onClick={() => onPlayTrack(track, artist.topTracks)}
-                  className={`flex items-center justify-between p-2.5 md:p-3 rounded-[8px] hover:bg-white/5 border border-transparent transition-all group cursor-pointer ${
-                    currentTrack?.id === track.id ? 'bg-white/5 border-[var(--glass-border)]' : ''
-                  }`}
+                  className={`flex items-center justify-between p-2.5 md:p-3 rounded-[8px] hover:bg-white/5 border border-transparent transition-all group cursor-pointer ${currentTrack?.id === track.id ? 'bg-white/5 border-[var(--glass-border)]' : ''
+                    }`}
                 >
                   <div className="flex items-center gap-3 md:gap-4 min-w-0">
                     <span className="text-xs font-mono text-[var(--text-muted)] w-4 text-center">
                       {idx + 1}
                     </span>
                     <div className="relative w-9 h-9 md:w-10 md:h-10 rounded-[6px] overflow-hidden bg-zinc-800 flex-shrink-0 shadow-sm">
-                      <img 
-                        src={track.coverUrl} 
-                        alt={track.title} 
+                      <img
+                        src={track.coverUrl}
+                        alt={track.title}
                         className="w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -186,30 +243,36 @@ export default function ArtistProfile({
                       </div>
                     </div>
                     <div className="min-w-0">
-                      <span className={`text-xs md:text-sm font-semibold truncate block ${
-                        currentTrack?.id === track.id ? 'text-[var(--accent-color)] text-glow font-bold' : ''
-                      }`}>
+                      <span className={`text-xs md:text-sm font-semibold truncate flex items-center gap-2 ${currentTrack?.id === track.id ? 'text-[var(--accent-color)] text-glow font-bold' : 'text-white'
+                        }`}>
                         {track.title}
+
+                        {/* Co-sung / Featured Badge */}
+                        {track.role === 'featured' && (
+                          <span className="bg-purple-500/10 border border-purple-500/30 text-purple-400 text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0">
+                            Feat
+                          </span>
+                        )}
                       </span>
                       <span className="text-[10px] md:text-xs text-[var(--text-secondary)] truncate block mt-0.5">
                         {track.album}
                       </span>
                     </div>
+
                   </div>
 
                   <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
                     <span className="text-xs font-mono text-[var(--text-muted)] hidden sm:block">
                       {track.plays.toLocaleString('en-US')} plays
                     </span>
-                    
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onToggleLike(track.id);
                       }}
-                      className={`p-1.5 rounded-full hover:bg-white/5 active-scale transition-colors md:opacity-0 md:group-hover:opacity-100 ${
-                        isLiked ? 'text-red-500' : 'text-[var(--text-secondary)] hover:text-white'
-                      }`}
+                      className={`p-1.5 rounded-full hover:bg-white/5 active-scale transition-colors md:opacity-0 md:group-hover:opacity-100 ${isLiked ? 'text-red-500' : 'text-[var(--text-secondary)] hover:text-white'
+                        }`}
                     >
                       <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current' : ''}`} />
                     </button>
@@ -235,9 +298,9 @@ export default function ArtistProfile({
                     className="glass-panel glass-panel-hover p-4 rounded-[12px] group cursor-pointer transition-all flex flex-col h-full"
                   >
                     <div className="relative w-full aspect-square rounded-[8px] overflow-hidden bg-zinc-800 mb-4 shadow-md">
-                      <img 
-                        src={album.coverUrl} 
-                        alt={album.name} 
+                      <img
+                        src={album.coverUrl}
+                        alt={album.name}
                         className="w-full h-full object-cover"
                       />
                       <button
