@@ -337,7 +337,7 @@ useEffect(() => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--bg-color)] text-[var(--text-primary)]">
+    <div className="flex flex-col h-screen h-dvh w-screen overflow-hidden bg-[var(--bg-color)] text-[var(--text-primary)]">
       {/* Howler.js is initialized dynamically and does not require a React audio element */}
 
       {/* Main Workspace Layout */}

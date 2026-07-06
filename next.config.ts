@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname
   },
+  allowedDevOrigins: ['10.213.148.163'],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
